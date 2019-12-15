@@ -1,0 +1,48 @@
+%! Author = Stepan Oskin
+%! Date = 14-Dec-19
+
+% Preamble
+\documentclass[11pt]{report}
+
+% Packages
+\usepackage{amsmath, subcaption}
+\usepackage{graphicx}
+\usepackage{titlesec, blindtext, color}
+
+% New commands
+\newcommand{\norm}[1]{\left\lVert#1\right\rVert}
+\newcommand{\vect}[1]{\boldsymbol{#1}}
+\newcommand{\pa}[1]{\partial{#1}}
+
+\titleformat{\chapter}[hang]{\Huge\bfseries}{Question \thechapter\hsp\textcolor{gray75}{|}\hsp}{0pt}{\Huge\bfseries}
+
+% Document
+\begin{document}
+
+    \title{Prodigy Algorithmic Design Challenge}
+
+    \author{Stepan Oskin}
+
+    \maketitle
+
+    \begin{abstract}
+
+        You are given a list of tasks $T = T_1, T_2, \dots, T_n$.
+        Each task is to be done on a computer.
+        Some tasks are easy, other tasks are hard.
+        (Some examples of tasks could be typing, or coding, or answering multiple-choice questions.)
+        You also have a set of users $U$ who have different abilities on these tasks.
+        The goal of this challenge is to produce a pseudo-code heuristic to solve each step of the challenge, supported by explanations, assumptions, or working code.
+    %TODO rewrite abstract
+
+    \end{abstract}
+
+    \include{questions/q1}
+    \include{questions/q2}
+    \include{questions/q3}
+
+    \medskip
+    \bibliography{}
+    \bibliographystyle{ieeetr}
+
+\end{document}

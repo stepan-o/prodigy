@@ -1,0 +1,13 @@
+\chapter{Question 3: adaptive algorithm for building custom task lists} \label{ch:q3_adaptive_algorithm}
+
+\textit{Based on your answer for 2 (i.e\. given a single combined task list with estimated difficulties), suppose you wanted to build an adaptive algorithm to order the sequence of tasks each user is given.
+You want to create a custom list of tasks for each user.
+This custom list should give tasks of a suitable level of difficulty for each user, and you want the difficulty of tasks each user does to gradually increase over time.
+How would you approach this?}
+
+\section{Relative question difficulty and user ranking} \label{sec:relative_difficulty}
+
+Users in $U$ are said to have different levels of abilities on tasks in $T$, which needs to be taken into account by the adaptive task list-building algorithm.
+In order to make informed selection of tasks $Ti$ to be included in the custom task list $L_U_k$ to be shown to user $U_k$ in a given session, the algorithm needs to take into account the current level of abilities of the user $U_k$.
+Since all the tasks in $T$ have previously been assigned a difficulty category based on the percentage of the correct answers given by all the users who attempted the task, a ranking system can be established based on the
+

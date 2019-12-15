@@ -1,0 +1,95 @@
+\chapter{Incorporate expert rating of difficulty of each task} \label{ch:q2_expert_rating}
+
+\section{Question 2} \label{sec:q2}
+
+Now suppose you are given a set $L$ of task lists $L_1, L_2, \dots, L_n$.
+Each task list contains some tasks in estimated ascending difficulty order as measured by some integer $D$, where $D = 0$ for an extremely trivial task and $D = 50$ for the hardest task imaginable.
+However, these given task difficulties are only estimates by experts - in practice each user who tries a task might find that task easier or harder than the expert thought it would be.
+How would you use the given set of task lists along with the actual performance of users on each task to generate a single combined task list with better estimated difficulties for all tasks?
+(Please assume that for any task $T_i$, the difficulty estimate $D_i$ can vary depending on the specific expert's evaluation of difficulty for $T_i$ - that is to say, experts will likely disagree on how difficult any given task is.
+You can also assume that the same task may appear on multiple task lists.)
+
+\section{Solution} \label{sec:q2_solution}
+
+\subsection{Combining individual expert assessments into a single expert difficulty estimate $D_{expt}(T_k)$} \label{subsec:q2_dexp}
+
+First, it is necessary to obtain the combined expert difficulty estimates $D_{expt}(T_k)$ for each task $T_k$ in $T$ by combining all the ratings $D_i(T_k)$ found for a given task on different task lists in $L$.
+Since no specific weight is given to individual expert opinions, the combined expert difficulty estimate $D_{expt}(T_k)$ can be taken for each task $T_k$ as the mean of all estimates $D_i(T_k)$ from each list in the subset of task lists $L_{T_k}$ all of which contain the task $T_k$:
+
+\begin{equation} \label{eq:d_expt}
+    D_{expt}(T_k) = \left \lfloor \frac{1} {m} \sum \limits_{i=1}^m D_i(T_k) \right \rfloor
+\end{equation}
+
+where $m$ is the count of task lists in the subset $L_{T_k}$ (task lists from $L$ that include the task $T_k$).
+
+In the equation~\ref{eq:d_expt}, $D_{expt}(T_k)$ can be left as a real number and be directly converted to a probability of a correct answer using the equation~\ref{eq:dexpt_to_dabs_conversion} that will be introduced in the following section.
+However, the preferable way of conversion of $D_{expt}$ to a scale comparable with $D_{abs}$ (also to be discussed in the following section) involves grouping questions by $D_{expt}$, and thus works better for a discrete set of values.
+For this purpose in equation~\ref{eq:d_expt}, the mean of all expert estimates is rounded down to the nearest integer.
+
+\subsection{Combining empirically determined absolute task difficulty $D_{abs}(T_k)$ with expert estimates $D_{expt}(T_k)$} \label{subsec:q2_dcomp}
+
+In order to obtain the composite difficulty measure of a task $T_k$, the two independently obtained measures of task difficulty $D_{abs}(T_k)$ and $D_{expt}(T_k)$ need to be combined into a single composite task difficulty measure $D_{comp}(T_k)$;
+to facilitate this, they need to be converted to a comparable scale.
+As was discussed in section~\ref{subsec:q1_difficulty_index}, $D_{abs}(T_k)$ represents the empirically obtained expected value of the probability that an average user in $U$ can solve the task $T_k$.
+In contrast, expert task difficulty estimate $D(T_k)$ is ranked on an integer scale from 0 to 50, with 0 corresponding to an extremely trivial task and 50 representing the hardest task imaginable.
+Since $D_{expt}(T_k)$ was defined in section~\ref{subsec:q2_dexp} as the rounded down mean of all $D_i$ for a given task $T_k$, it will also fall on an integer scale from 0 to 50.
+
+To bring the two metrics onto a single composite difficulty measure, $D_{comp}(T_k)$, the scale of $D_{expt}$ must be mapped onto the corresponding probabilities of the correct answer by an average user in $U$, similar to the ones that were estimated empirically for $D_{abs}(T_k)$ in section~\ref{subsec:q1_difficulty_index}.
+Doing this empirically would require matching each discrete value of $D$ to the corresponding mean ratio of correct answers to all attempts, for all the tasks in the subset $T_{D_i}$ which include only the tasks that have been rated by experts to have the difficulty level of $D_i$;
+this will ensure that expert estimates are calibrated to the performance of the actual population of users $U$.
+This process could be repeated in order to provide an updated calibration of static expert difficulty estimates to evolving user population.
+
+\begin{equation}
+    \begin{split}
+        D_{abs}(T_k | D_{expt}(T_k) = D_i) = p(T_k | D_{expt}(T_k) = D_i) = \\
+        = E[P(Ans=Corr | D_{expt}(T_k) = D_i)]
+    \end{split}
+\end{equation}
+
+In case if no empirical data is available, the 0--50 scale of difficulty used by experts can be converted linearly to a 0--1 probability scale, with $D(T_k)=0$ corresponding to difficulty $D_{abs}(T_k)=p(T_k)=1.00$ (all users can solve the most trivial task) and $D(T_k)=50$ corresponding to $D_{abs}(T_k)=0.0$ (no user can solve the hardest task imaginable).
+This linear relationship between expert difficulty estimate $D_{expt}$ and the absolute probability of the correct answer $D_{abs}=p$ can be represented as follows:
+
+\begin{equation} \label{eq:dexpt_to_dabs_conversion}
+    D_{abs}(T_k | D_{expt}(T_k) = D_i) = p(T_k | D_{expt}(T_k) = D_i) = 1 - 0.02 \cdot D_i
+\end{equation}
+
+where $D_i$ is an integer value from 0 to 50.
+
+After both task difficulty measures $D_{abs}(T_k)$ and $D_{expt}(T_k)$ have been brought to the same scale (expected probabilities of the correct answer given by a user from $U$), the final composite task difficulty measure can be defined as the mean of the two difficulty measures:
+
+\begin{equation}
+    D_{comp}(T_k) = \frac{D_{abs}(T_k) + D_{abs}(T_k | D_{expt}(T_k) = D_i)} {2}
+\end{equation}
+
+Alternatively, if a given preference exists between the two difficulty measures, $D_{comp}$ can be defined as the weighted sum of the two.
+
+\subsection{Converting task difficulty to discrete labels} \label{subsec:q2_discrete_conversion}
+
+The main task of the adaptive algorithm for designing custom task lists for each user session (to be discussed in the following sections) is to determine the sequence of task difficulties to be presented to a user.
+Since for the purposes of the implementation of a planning agent it is more convenient to work with discrete action spaces rather than with continuous ones, question difficulty can be categorized by binning the values of $D_{comp}$ using a rough `'rule-of-thumb'' classification by difficulty $p$ according to the difficulty index, as is shown in table~\ref{tab:difficulty_index}.
+
+\begin{table}[h!]
+    \centering
+    \begin{tabular}{||c | c | c ||}
+        \hline
+        Task difficulty ($D_{cat}(T_k)$) & $D_{comp}(T_k)$ & \% correct \\
+        \hline
+        \hline
+        Very trivial & $p > 0.8$ & Over 80\% \\
+        \hline
+        Trivial & $0.6 < p \leq 0.8$ & From 60\% to 80\% \\
+        \hline
+        Moderate & $0.4 < p \leq 0.6$ & From 40\% to 60\% \\
+        \hline
+        Hard & $0.2 < p < \leq 0.4$ & From 20\% to 40\% \\
+        \hline
+        Very hard & $p \leq 0.2$ & Less than 20\% \\
+        \hline
+    \end{tabular}
+    \caption{Categorizing questions by absolute difficulty using difficulty index.}
+    \label{tab:difficulty_index}
+\end{table}
+
+So far, all the consideration has been given to rating absolute task difficulty, as defined by empirical user performance or expert judgement.
+However as was discussed in section~\ref{subsec:q1_abs_rel_difficulty}, due to the difference of ability levels of users in $U$ on the tasks in $T$, there are two definitions of task difficulty that need to be considered for the purposes of custom task list design: absolute and relative task difficulty for a given user $U_i$.
+The composite categorical task difficulty assessment $D_{cat}$ that was produced from the composite absolute question difficulty index $D_{comp}$ will be used in the combination with user ranking to produce relative task difficulty, which will be introduced in the following section.

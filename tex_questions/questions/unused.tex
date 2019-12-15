@@ -1,0 +1,42 @@
+\begin{figure}[hbt!]
+    \centering
+    \includegraphics[width=1\linewidth,trim=1 1 1 1,clip]{img/adaline_dag.jpg}
+    \caption{Adaline algorithm compares the true class labels with the linear activation function's continuous valued output to compute the model error and update the weights.
+    In contrast, the perceptron compares the true class labels to the predicted class labels.}
+    \label{fig:adaline_dag}
+\end{figure}
+
+
+\begin{equation}
+    \begin{split}
+        \frac{ \pa{J} } { \pa{w_j} } & =
+        \frac{\partial} {\pa{w_j}} \frac{1} {2} \sum \limits_i \left( y^{(i)} - \phi \left( z^{(i)} \right) \right) ^2 = \\
+        & = \frac{1} {2} \frac{\partial} {\pa{w_j}} \sum \limits_i \left( y^{(i)} - \phi \left( z^{(i)} \right) \right) ^2 = \\
+        & = \frac{1} {2} \sum \limits_i 2 \left( y^{(i)} - \phi \left( z^{(i)} \right) \right) \frac{\partial} {\pa{w_j}} \left( y^{(i)} - \phi \left( z^{(i)} \right) \right) = \\
+        & = \sum \limits_i \left( y^{(i)} - \phi \left( z^{(i)} \right) \right) \frac{\partial} {\pa{w_j}} \left( y^{(i)} - \sum \limits_i \left( w_j^{(i)} x_j^{(i)} \right) \right) = \\
+        & = \sum \limits_i \left( y^{(i)} - \phi \left( z^{(i)} \right) \right) \left( - x_j^{(i)} \right) = \\
+        & = -\sum \limits_i \left( y^{(i)} - \phi \left( z^{(i)} \right) \right) x_j^{(i)}
+    \end{split}
+\end{equation}
+
+\begin{figure}[hbt!]
+    \centering
+    \begin{subfigure}[t]{.48\textwidth}
+        \centering
+        \includegraphics[width=\columnwidth,trim=4 4 4 4,clip]{img/ada_learn_rate_001.png}
+        \caption{$\eta=0.01$}
+        \label{fig:ada_learn_rate_001}
+    \end{subfigure}
+    ~ %add desired spacing between images, e. g. ~, \quad, \qquad, \hfill etc.
+    %(or a blank line to force the subfigure onto a new line)
+    \begin{subfigure}[t]{.48\textwidth}
+        \centering
+        \includegraphics[width=\columnwidth,trim=4 4 4 4,clip]{img/ada_learn_rate_00001.png}
+        \caption{$\eta=0.0001$}
+        \label{fig:ada_learn_rate_00001}
+    \end{subfigure}
+    \caption{It often requires some experimentation to find a good learning rate $\eta$ for optimal convergence.
+    Two different learning rates, $\eta=0.1$ (\ref{fig:ada_learn_rate_001}) and $\eta=0.0001$(\ref{fig:ada_learn_rate_00001}), were chosen and the cost functions versus the number of epochs were plotted to see how well the Adaline implementation learns from the training data.}
+    \label{fig:ada_learn_rate}
+\end{figure}
+
