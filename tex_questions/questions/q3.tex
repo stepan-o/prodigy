@@ -1,13 +1,217 @@
-\chapter{Question 3: adaptive algorithm for building custom task lists} \label{ch:q3_adaptive_algorithm}
+\chapter{Adaptive algorithm for building custom task lists} \label{ch:q3_adaptive_algorithm}
 
-\textit{Based on your answer for 2 (i.e\. given a single combined task list with estimated difficulties), suppose you wanted to build an adaptive algorithm to order the sequence of tasks each user is given.
+\section{Question 3} \label{sec:q3}
+
+Based on your answer for 2 (i.e., given a single combined task list with estimated difficulties), suppose you wanted to build an adaptive algorithm to order the sequence of tasks each user is given.
 You want to create a custom list of tasks for each user.
 This custom list should give tasks of a suitable level of difficulty for each user, and you want the difficulty of tasks each user does to gradually increase over time.
-How would you approach this?}
+How would you approach this?
 
-\section{Relative question difficulty and user ranking} \label{sec:relative_difficulty}
+\section{Solution} \label{sec:q3_solution}
 
-Users in $U$ are said to have different levels of abilities on tasks in $T$, which needs to be taken into account by the adaptive task list-building algorithm.
-In order to make informed selection of tasks $Ti$ to be included in the custom task list $L_U_k$ to be shown to user $U_k$ in a given session, the algorithm needs to take into account the current level of abilities of the user $U_k$.
-Since all the tasks in $T$ have previously been assigned a difficulty category based on the percentage of the correct answers given by all the users who attempted the task, a ranking system can be established based on the
+\subsection{User ranking based on experience} \label{subsec:q3_user_stratification}
 
+Users in $U$ are said to have different skill levels on tasks in $T$;
+in addition, their abilities change with time, which also needs to be taken into account when building custom task lists for subsequent sessions.
+Therefore, in order to make informed selection of tasks to be shown to the user $U_i$ in a given session, the algorithm needs to take into account the current level of abilities of the user $U_i$ at the time of the session.
+Since all the tasks in $T$ have previously been assigned an absolute difficulty category $D_{cat}$ (introduced in section~\ref{subsec:q2_discrete_conversion}) based on the composite absolute task difficulty measure $D_{comp}$ (introduced in section~\ref{subsec:q2_dcomp}), a user ranking system can be established based on the history of each user in $U$, including the number and absolute difficulty of all tasks solved over all of their previous sessions.
+
+Since all the users are given random samples of tasks from $T$, distribution of absolute difficulty of attempted tasks may vary from user to user.
+In addition, users may have different number of previous sessions, with some of the users having attempted significantly more tasks than others.
+Thus, the user ranking system needs to account for both the variance in the number of questions solved correctly by a user $U_i$, and for variation in their absolute difficulty $D_{cat}(T_k)$.
+The total number of tasks attempted (including the ones that were solved incorrectly) is assumed to not contribute much to the true level of user's ability.
+
+To rank users in $U$ based on their current ability, a new experience metric, $Ex(U_i)$, can be established to account for the number and difficulty of tasks previously solved by each user $U_i$ over all of their past sessions.
+This metric intends to represent relative skill level of the user $U_i$ compared to other users in $U$, as shown by their past performance on tasks in $T$.
+The experience metric is computed as a weighted sum of all tasks solved by a user corrected by their experience coefficients, which are assigned based on the absolute difficulty of each task.
+An example of the experience weight coefficients $Ec$ related to absolute categorical task difficulty $D_{cat}$ is shown in the table~\ref{tab:experience_coefficients}.
+
+\begin{table}[h!]
+    \centering
+    \begin{tabular}{ c | c }
+        \toprule
+        \hline
+        Absolute task difficulty & Experience coefficient \\
+        $D_{cat}$ & $Ec(D_{cat})$ \\
+        \midrule
+        \hline
+        very trivial & 0.1 \\
+        \hline
+        trivial & 0.5 \\
+        \hline
+        moderate & 1.0 \\
+        \hline
+        hard & 5.0 \\
+        \hline
+        very hard & 10.0 \\
+        \hline
+        \bottomrule
+    \end{tabular}
+    \caption{Experience coefficients $Ec(D_{cat})$ assigned to each task difficulty category $D_{cat}$ for the purpose of ranking users by relative skill level, as shown by their past performance on tasks in $T$.
+    The order of magnitude difference in $Ec$ coefficients intends to represent the assumption that a user who can solve very hard questions with at least 50\% probability is likely to solve very trivial questions with almost 100\% chance.
+    At the same time, a user who can only solve a large number of very trivial questions is not likely to be able to answer very hard questions at all.
+    Other users fall somewhere in between the two extremes.}
+    \label{tab:experience_coefficients}
+\end{table}
+
+Thus, experience of a given user $Ex(U_i)$ can be expressed as:
+
+\begin{equation} \label{eq:user_ex}
+    \begin{split}
+        Ex(U_i) = 0.1 \cdot very~trivial +
+        0.5 \cdot trivial +
+        1.0 \cdot moderate + \\
+        + 5.0 \cdot hard +
+        10.0 \cdot very~hard
+    \end{split}
+\end{equation}
+
+where $very~trivial$, $trivial$, $moderate$, $hard$ and $very~hard$ are the counts of tasks of absolute difficulty level $D_{cat}$ successfully completed by a given user $U_i$.
+After calculating the experience $Ex(U_i)$ for each user in $U$, all users can be ranked by $Ex$ and split into groups, thus reducing a continuous random variable $Ex(U_i)$ to a discrete user category $GU_j$.
+
+For the purposes of this challenge, the experience coefficients assigned to each task difficulty in equation~\ref{eq:user_ex} (also shown in table~\ref{tab:experience_coefficients}) have been chosen arbitrarily.
+However, their intention is to produce a ranking system for all users in $U$ which allows the users to be stratified by their ability, ideally splitting them into distinct groups according to their expected probability of correctly solving a task of a given absolute difficulty.
+The basic idea behind the chosen values was to create an order of magnitude difference in experience coefficients $Ec(D_{cat})$ between different task difficulty categories, thus stratifying the users who can solve questions of increasing difficulty.
+
+\begin{table}[h!]
+    \centering
+    \begin{tabular}{ c || c | c | c | c | c }
+        \toprule
+        \hline
+        {} & \multicolumn{5}{c}{Probability of the correct answer} \\
+        Absolute task difficulty & \multicolumn{5}{c}{$E[P(Ans=Corr|D_{cat}(T_k), U_i \in GU_j)]$} \\
+        \hline
+        $D_{cat}(T_k)$ & GU1 & GU2 & GU3 & GU4 & GU5 \\
+        \hline
+        \midrule
+        \hline
+        Very trivial & 0.5 & 0.75 & 0.9 & 0.95 & 0.99 \\
+        \hline
+        Trivial & 0.25 & 0.5 & 0.75 & 0.9 & 0.95 \\
+        \hline
+        Moderate & 0.1 & 0.25 & 0.5 & 0.75 & 0.9 \\
+        \hline
+        Hard & 0.05 & 0.1 & 0.25 & 0.5 & 0.75 \\
+        \hline
+        Very hard & 0.01 & 0.05 & 0.1 & 0.25 & 0.5 \\
+        \hline
+        \bottomrule
+    \end{tabular}
+    \caption{Intended outcome of the user ranking system based on the new experience metric $Ex$.
+    $GU_j$ represent categories of users produced by ranking users in $U$ based on their experience $Ex$ and grouping them using the natural breaks identified in the distribution of $Ex$ values.
+    Each group is expected to show some variance in terms of success rates on certain task difficulties, but it is assumed that given a large enough population of users in $U$, each group will represent a distinct sub-population of users with a certain skill level, as expressed by their performance on tasks in $T$.
+    $E[P(Ans=Corr|D_{cat}(T_k), U_i \in GU_j)]$ represents the expectation of probability that a user $U_i$ from the group $GU_j$ will be able to solve the given task $T_k$ of absolute difficulty level $D_{cat}(T_k)$.}
+    \label{tab:user_stratification}
+\end{table}
+
+Calibration of experience coefficients used in equation~\ref{eq:user_ex} can be performed using empirical data, aiming to obtain user stratification analogous to the one presented in table~\ref{tab:user_stratification}.
+In addition, the number of recognized user categories can be expanded or reduced (example in table~\ref{tab:user_stratification} is presented for five groups that could be produced using a technique for identifying natural breaks in the distribution of user experience $Ex$, such as the Fischer-Jenks optimization algorithm).
+Experience coefficients $Ec$ should be selected to produce a distribution of experience $Ex$ for all users in $U$ with identifiable natural breaks which correspond to more or less homogeneous groups of users as reflected by their mean probability (and its variance) to solve the tasks of a given absolute difficulty $D_{cat}$;
+table~\ref{tab:user_stratification} presents an example of how such split could look like.
+
+To sum up, the process of user ranking outlined above results first in the introduction of a new continuous random variable $Ex$ for each user in $U$ representing user skill level, as indicated by their past performance on tasks in $T$.
+User experience $Ex(U_i)$ is computed as a weighted sum of the number of tasks previously solved by the user $U_i$;
+tasks are counted by categorical absolute difficulty $D_{cat}(T_k)$, counts are weighted using pre-defined experience coefficients $Ec$ for each task difficulty.
+Then, to simplify the logic of the task list-building agent, user experience rankings are converted to discrete user groups (for example, users can be categorized by identifying the natural breaks in the distribution of $Ex$ using Fisher-Jenks optimization algorithm).
+Each group is intended to represent a sub-population of users with distinct expected probability (as expressed by group mean and variance) to solve a task of a given absolute difficulty category $E[P(Ans=Corr|D_{cat}(T_k), U_i \in GU_j)]$.
+
+The process of re-ranking all the users in $U$ can be repeated at fixed time intervals to recognize the changes in user experience as more tasks are being solved;
+groups $GU$ can be re-assigned regularly to users based on the most up-to-date history of each user's performance.
+Ultimately, the user category $GU_j$, along with the categorical absolute task difficulty $D_{cat}$, are used by the task list-building agent to design the custom task list to be shown to the user $U_i$ in a given session.
+The possible types of logic for the task list-building agent are discussed in the remainder of this document.
+
+\subsection{Relative task difficulty $D_{rel}(T_k, U_i)$} \label{subsec:q3_drel}
+
+Since it is said that users in $U$ have different abilities on tasks in $T$, when discussing the difficulty of a task $T_k$ there are two distinct definitions of difficulty that have to be considered: absolute and relative task difficulty.
+Absolute categorical task difficulty $D_{cat}(T_k)$ was introduced in section~\ref{subsec:q2_discrete_conversion}.
+After user categories (introduced in section~\ref{subsec:q3_user_stratification}) have been determined, relative difficulty $D_{rel}(T_k, U_i) = D_{rel}(D_{cat}(T_k), U_i \in GU_j)$ of each task and user pair can be established by matching user and task categories using table~\ref{tab:drel}.
+The matching is done according to the probability estimates of correct answers for each user group and task difficulty category that was outlined in table~\ref{tab:user_stratification}.
+
+\begin{table}[h!]
+    \centering
+    \begin{tabular}{ c || c | c | c | c | c }
+        \toprule
+        \hline
+        Absolute task difficulty & \multicolumn{5}{c}{Relative task difficulty D_{rel}(D_{cat}(T_k), U_i \in GU_j)} \\
+        \hline
+        $D_{cat}(T_k)$ & GU1 & GU2 & GU3 & GU4 & GU5 \\
+        \hline
+        \midrule
+        \hline
+        Very trivial &  \textcolor{orange!90!black}{Average} & \textcolor{green!70!black}{Easy} & \textcolor{black!60}{Too easy} & \textcolor{black!50}{Too easy} & \textcolor{black!40}{Too easy} \\
+        \hline
+        Trivial & \textcolor{red!90!black}{Hard} & \textcolor{orange!90!black}{Average} & \textcolor{green!70!black}{Easy} & \textcolor{black!60}{Too easy} & \textcolor{black!50}{Too easy} \\
+        \hline
+        Moderate & \textcolor{black!60}{Too hard} & \textcolor{red!90!black}{Hard} & \textcolor{orange!90!black}{Average} & \textcolor{green!70!black}{Easy} & \textcolor{black!60}{Too easy} \\
+        \hline
+        Hard & \textcolor{black!70}{Too hard} & \textcolor{black!60}{Too hard} & \textcolor{red!90!black}{Hard} & \textcolor{orange!90!black}{Average} & \textcolor{green!70!black}{Easy} \\
+        \hline
+        Very hard & \textcolor{black!100}{Too hard} & \textcolor{black!70}{Too hard} & \textcolor{black!60}{Too hard} & \textcolor{red!90!black}{Hard} & \textcolor{orange!90!black}{Average} \\
+        \hline
+        \bottomrule
+    \end{tabular}
+    \caption{Relative task difficulty $D_{rel}(T_k, U_i) = D_{rel}(D_{cat}(T_k), U_i \in GU_j)$.
+    $GU_j$ represent categories of users produced by ranking all users in $U$ based on experience $Ex(U_i)$ and grouping them using the natural breaks identified in the distribution of $Ex$ values.
+    $D_{cat}(T_k)$ represents absolute categorical task difficulty introduced in section~\ref{subsec:q2_discrete_conversion}.
+    The resultant categories of $D_{rel}(D_{cat}(T_k), U_i \in GU_j)$ represent the expectation of probability that the user $U_i \in GU_j$ can solve the task $T_k$ as was outlined in table~\ref{tab:user_stratification}.}
+    \label{tab:drel}
+\end{table}
+
+\subsection{Adaptive algorithm to build custom task lists} \label{subsec:q3_adaptive_algorithm}
+
+The goal of the adaptive task list-building algorithm is to generate custom task lists to be shown to user $U_i$;
+the tasks need to have a suitable level of difficulty for the user $U_i$ at the time of each session.
+The categories for relative task difficulty $D_{rel}$ introduced in section~\ref{subsec:q3_drel} are intended to reduce the size of the state and action spaces for the task list-building agent: three out of five categories of relative task difficulty $D_{rel}(D_{cat}(T_k), U_i \in GU_j)$ shown in table~\ref{tab:drel} form the state space for the adaptive task list-building algorithm.
+
+\begin{itemize}
+    \item once a user $U_i$, previously classified by past performance to belong to group $GU_j$, starts a new session, the algorithm needs to select the sequence of tasks from $T$ to be present to the user in the current session.
+    \item at the start of each session, the agent creates three pools with relatively ``easy'', ``average'' and ``challenging'' tasks by randomly choosing tasks from $T$ with the corresponding absolute difficulty level $D_{cat}$, as indicated in table~\ref{tab:drel}.
+    For example, for a user from the group $GU_1$, an appropriate absolute task difficulty to form a pool of relatively ``average'' tasks would be ``very trivial'':
+
+    $D_{cat}(T_k | D_{rel}(T_k, U_i \in UG_1 ) = Average) = Very~trivial$
+
+    \item tasks that are categorized as either ``too hard'' or ``too easy'' according to $D_{rel}$ (as seen in table~\ref{tab:drel}) are not considered to be included during the current session.
+    \item following the policy $\pi$, the task list-building agent selects a sequence of pools to draw tasks from (e.g., $\left\{easy, easy, average, challenging, \dots \right\}$) in the current session.
+    The sequence can either be static (selected by a pre-defined logic), or it can be adaptive based on the correctness of responses given by the user $U_i$ in the current session.
+    \item based on the defined sequence, the custom task list is built by randomly selecting tasks from corresponding pools without replacement, either in batch or after each user response.
+    This way, the agent does not need to deal with the state space of the size of all available tasks for each task choice, and instead, each time it needs to select one from only three available options, each representing the difficulty level of the pool from which the next task should be drawn.
+\end{itemize}
+
+This section discusses several ``baseline'' policy options for reflex agents using pre-defined hard-coded logic, the solution to question 4 discusses an adaptive planning agent using Markov decision process (MDP) framework that attempts to take into account current frustration level experienced by the user $U_i$ during the ongoing session.
+Below are some of the examples of the basic hard-coded logic for task list-building algorithm:
+
+\begin{itemize}
+    \item Same difficulty policies, $\pi_{easy}$, $\pi_{average}$ or $\pi_{hard}$: the most basic policies instruct the agent to always select questions of the same difficulty in a given session.
+    This method is not adaptive and does not offer any flexibility of adjusting the difficulty of tasks shown based on user responses;
+    it could be used if the user would want to manually control the difficulty of tasks to be selected in each session.
+    \item Random policy, $\pi_{random}$: another basic policy includes the agent drawing a task from ``easy'', ``average'' or ``hard'' pool at random using uniform distribution.
+    \item Weighted random policy, $\pi_{random\_w}$: a slight improvement over the random policy $\pi_{random}$, assigns weights to each category for random choice (e.g., 50\% easy questions, 30\% average, 20\% hard).
+    \item Hard-then-easy policy, $\pi_{hard\_easy}$: a slight improvement over weighted random policy $\pi_{random\_w}$, aims to recognize the growing user fatigue during a given session, and adjusts the weights used for random choice of task difficulty accordingly (higher chance of challenging tasks at the start of a session;
+    as more tasks are shown, chance of picking a task from the easy pool increases).
+\end{itemize}
+
+The advantage of the basic hard-coded methods discussed above is the fact that the custom task list can be built out in advance at the start of the session, with no additional computation required while the session continues.
+However, these methods do not take into account the correctness of responses given by the user $U_i$ to the tasks that were presented in the current session.
+
+Since incorrect responses to tasks result in in-game penalties (missed attacks, lost battles, etc.), they can contribute to a growing level of frustration experienced by a user during a session;
+at the same time, users do not learn much by accomplishing only the tasks that are relatively easy for them to solve.
+Thus, showing tasks of higher relative difficulty to users would result in the improvement of their learning outcomes;
+at the same time, picking a lot of questions that are qualified as ``challenging'' for a given user $U_i$ will likely result in a higher rate of wrong responses and higher frustration levels due to in-game losses experienced by a user $U_i$ during a session.
+
+In order to show higher difficulty tasks while avoiding high levels of frustration, an agent could take recent user responses into account when choosing the next task to be shown.
+Policy $\pi_{adapt\_simple}$ presents an adaptive deterministic logic for difficulty selection for task $T_{t+1}$ that takes into account recent responses given by the user $U_i$ on tasks $T_t$ and $T_{t-1}$:
+
+\begin{itemize}
+    \item Adaptive deterministic policy $\pi_{adapt\_simple}$:
+    \begin{itemize}
+        \item $\pi_{adapt\_simple}$ starts by picking two questions from the ``easy'' pool
+        \item for each two correct responses in a row, the difficulty of the following task $T_{t+1}$ is raised (e.g., after two ``easy'' tasks answered right in a row, the next will be ``average'', etc.
+        If two ``challenging'' questions are solved correctly, next one will also be challenging).
+        \item after each wrong answer, the difficulty of the following task $T_{t+1}$ is dropped (e.g., after an incorrect ``average'', the next task will be ``easy'', etc.
+        After an incorrect ``easy'' task, the next one will be ``easy'' as well.)
+    \end{itemize}
+\end{itemize}
+
+However, the nature of the environment in which the agent operates is stochastic, as the agent can never be absolutely sure if the user will be able to solve any given task $T_k$;
+both the absolute $D_{abs}(T_k)$ and the relative $D_{rel}(T_k, U_i)$ task difficulty estimates are probabilistic in their nature.
+The following section presents an approach to designing the task list-planning agent as a sequential stochastic decision making process through a Markov decision process framework which takes into account the probabilistic nature of the environment.
