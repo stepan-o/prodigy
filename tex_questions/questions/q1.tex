@@ -12,58 +12,56 @@ Imagine you can see what is on a user's computer screen but nothing else.)
 
 \subsection{Absolute and relative difficulty of a task $T_k$} \label{subsec:q1_abs_rel_difficulty}
 
-Since it is said that users in $U$ have different abilities on tasks in $T$, when discussing the assessment of the difficulty of a task $T_k$ there are two distinct definitions of difficulty that have to be considered:
+Since it is given that users in $U$ have different abilities on tasks in $T$, when discussing the assessment of the difficulty of a task $T_k$ there are two distinct definitions of difficulty that have to be considered:
 
 \begin{enumerate}
-    \item $D_{abs}(T_k)$: absolute measure of difficulty for task $T_k$
+    \item absolute measure of difficulty for task $T_k$
 
-    One of the ways to define $D_{abs}(T_k)$ is as $p(T_k)$, or empirically observed percentage of correct responses from all the answers given by the subset of users $U_{T_k}$ who attempted the given task $T_k$.
+    One of the ways to define the absolute measure of difficulty for a given task $T_k$, or $D_{abs}(T_k)$, is through empirically observed percentage of correct responses from all the answers, $p(T_k)$, that were provided by the subset of users $U_{T_k}$ who attempted the given task $T_k$.
     This measure indicates the difficulty of a given task as expressed by the ratio of users who were able to solve it correctly.
 
-    \item $D_{rel}(T_k)$: relative measure of difficulty for task $T_k$
+    \item relative measure of difficulty for task $T_k$
 
-    $D_{rel}(T_k)$ can be defined as $D_{abs}(T_k)$ corrected for the current level of abilities of a given user.
+    Relative measure of difficulty for the task $T_k$ in relation with the user $U_i$, or $D_{rel}(T_k, U_i)$, can be defined as $D_{abs}(T_k)$ corrected for the current level of abilities of a given user $U_i$.
     This measure reflects the fact that the two users $U_i$ and $U_j$ might find the same task $T_k$ to have different level of difficulty, depending on their current abilities in a given subject.
-    Furthermore, the same user $U_i$ can find the same task $T_k$ to have higher or lower level of difficulty at different points in time (e.g., if the user $U_i$ improves their skills with the subject through practice).
-    $D_{rel}(T_k)$ is intended to reflect both differences when assessing the relative difficulty of a given task $T_k$.
+    Furthermore, the same user $U_i$ can find the same task $T_k$ to have higher or lower level of difficulty at different points in time (e.g., if the user $U_i$ improves their skills through practice).
+    $D_{rel}(T_k, U_i)$ is intended to reflect both of these differences when assessing the relative difficulty of a given task $T_k$ in relation to a given user $U_i$.
 \end{enumerate}
 
 This section is concerned with the absolute difficulty, $D_{abs}(T_k)$, of a task as reflected by the performance of the subset of users $U_{T_k}$ who have attempted the task $T_k$.
-Relative task difficulty $D_{rel}(T_k)$ will be discussed further in the following sections when introducing the question-feeding bot.
+Relative task difficulty $D_{rel}(T_k, U_i)$ will be discussed further in section~\ref{subsec:q3_drel}.
 
 \subsection{Determining absolute task difficulty $D_{abs}(T_k)$ using difficulty index} \label{subsec:q1_difficulty_index}
 
-Difficulty index presents a basic approach to determining absolute task difficulty: difficulty $p$ of each task $T_k$ from a given school year is determined as the fraction of the correct responses provided by all the users who attempted it.
-Difficulty $p$ of a task $T_k$ can be determined as the following ratio:
+Difficulty index presents a basic approach to determining absolute task difficulty: difficulty $p$ of each task $T_k$ can be determined as the fraction of the correct responses provided by all the users who attempted it:
 
-\begin{equation}
+\begin{equation} \label{eq:dabs}
     \label{eq:task_difficulty}
-    D_{abs}(T_k) = p(T_k) = \frac{\text{Correct answers}} {\text{Total answers}}
+    D_{abs}(T_k) = P(Ans=Corr|T_k) = \frac{\text{Correct answers}} {\text{Total answers}}
 \end{equation}
 
 This approach assumes that each task in $T$ was only shown to the subset of users $U_{T_k}$, for whom this task is relevant (e.g., tasks and users are grouped by school year).
 Also, in this approach, individual skill level of users is not taken into account;
 instead, absolute task difficulty $D_{abs}(T_k)$ can be interpreted as the expectation of the probability of an average user $U_i$ solving the given task $T_k$ correctly, as reflected by the subset of users $U_{T_k}$ who attempted this task:
 
-\begin{equation}
-    D_{abs}(T_k) = E[P(Ans=Corr)|U_i \in U_{T_k}]
+\begin{equation} \label{eq:dabs_interpretation}
+    D_{abs}(T_k) = E[P(Ans=Corr)|T_k, U_i \in U_{T_k}]
 \end{equation}
 
 \subsection{Uncertainty due to the size of subsets $U_{T_k}$} \label{subsec:q1_dabs_uncertainty}
 
-Since in our case each task $T_k$ is only attempted by a subset of users $U_{T_k}$, the assumption of this definition of absolute task difficulty $D_{abs}(T_k)$ is that the expectation of probability of correct answer for an average user from the sample $U_{T_k}$ is close to the expectation of probability of correct answer for an average user from the whole population $U$.
+Since in our case each task $T_k$ is only attempted by a subset of users $U_{T_k}$, when using the definition of absolute task difficulty $D_{abs}(T_k)$ presented in equation~\ref{eq:dabs_interpretation}, the assumption is that the expectation of probability of correct answer for an average user from the sample $U_{T_k}$ is close to that for an average user from the whole population $U$:
 
 \begin{equation} \label{eq:dabs_assumption}
-    E[P(Ans=Corr|U_i \in U_{T_k})] \approx E[P(Ans=Corr|U_i \in U)]
+    E[P(Ans=Corr|T_k, U_i \in U_{T_k})] \approx E[P(Ans=Corr|T_k, U_i \in U)]
 \end{equation}
 
 
-Since it is said that users are given randomized subsets of tasks from $T$, given the large number of users and tasks, it can be assumed that for most tasks in $T$, each task $T_k$ is shown to a random sample of users $U_{T_k}$ whose skill level and platform usage patterns are representative of the whole population of users in $U$;
-thus, absolute difficulty $D_{abs}(T_k)$ of the task $T_k$ can be assumed to offer an unbiased estimate of task difficulty with respect to all users in $U$.
+Since it is said that users are given randomized subsets of tasks from $T$, given the large number of users and tasks, it can be assumed that for most tasks in $T$, each task $T_k$ is shown to a large random sample of users $U_{T_k}$ whose skill level and platform usage patterns are representative of the whole population of users in $U$;
+in this case, absolute difficulty $D_{abs}(T_k)$ of the task $T_k$ can be assumed to offer an unbiased estimate of absolute task difficulty with respect to all users in $U$.
 
-However, this assumption is more likely to hold true in cases where the subset of users $U_{T_k}$ is sufficiently large, that is, enough users have attempted to solve the task $T_k$.
-%TODO determine the uncertainty of this method (size of the user sample U_T_k compared to the size of the whole user population U)
+However, this assumption is more likely to hold true in cases where most subsets of users $U_{T_k}$ are sufficiently large, that is, enough users have attempted to solve most tasks in $T$.
 To determine the uncertainty of this method, distribution of sample sizes $U_{T_k}$ can be compared with the size of the population $U$ for all tasks in $T$.
-In addition, analysis of the distribution of $D_{abs}$ obtained empirically could be used to test this assumption and inform the design of a more meaningful scoring system that can be used to determine the absolute difficulty of a task.
+The effect of sample sizes on difficulty estimates can be mitigating by using the uncertainty of each estimate as a weight coefficient when combining empirical absolute difficulty $D_{abs}(T_k)$ with expert estimate $D_{expt}(T_k)$ to determine the composite absolute task difficulty $D_{comp}(T_k)$, which will be discussed in section~\ref{subsec:q2_dcomp}.
+In addition, analysis of the distribution of $D_{abs}$ obtained empirically could be used to test the assumption and inform the design of a more meaningful scoring system that can be used to determine the absolute difficulty of a task.
 
-%TODO add psudocode
