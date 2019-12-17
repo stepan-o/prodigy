@@ -1,12 +1,313 @@
 \chapter{Taking current user frustration into account} \label{ch:q4_user_frustration}
 
 \section{Question 4} \label{sec:q4}
-How would you modify your algorithm from part 3 to estimate a
-user’s frustration level F where F = 0 denotes no frustration and F = 50
-denotes the highest level of frustration a user can safely experience
-without giving up at each point in time?
+How would you modify your algorithm from part 3 to estimate a user's frustration level $F$ where $F = 0$ denotes no frustration and $F = 50$ denotes the highest level of frustration a user can safely experience without giving up at each point in time?
 
-\section{Solution} \label{sec:q3_solution}
+\section{Solution} \label{sec:q4_solution}
 
-\subsection{} \label{subsec:}
+\subsection{Estimating user's frustration level $F_t$} \label{subsec:q4_frustration}
 
+As was discussed in section~\ref{subsec:q3_adaptive_algorithm}, incorrect responses given by the user to presented tasks result in in-game penalties (e.g., missed attacks, lost battles, etc.);
+these events are likely to contribute to a growing level of frustration experienced by a user during a session.
+At the same time, users do not learn much by accomplishing only the tasks that are relatively easy for them to solve;
+thus, showing the tasks of higher relative difficulty during a session would result in the improvement of learning outcomes.
+
+When selecting a sequence of tasks to be shown to the user $U_i$ during a session, a trade-off needs to be established between the relative difficulties of tasks to be shown and the risk of causing the user to give too many wrong responses, reach their frustration limit and terminate the session.
+Several basic policies presented in section~\ref{subsec:q3_adaptive_algorithm} (same difficulty policies $\pi_{easy}$, $\pi_{average}$, $\pi_{hard}$, or random policies $\pi_{random}$, $\pi_{random\_w}$ and $\pi_{hard\_easy}$) did not take into account the correctness of responses given by the user $U_i$ in the current session, and instead selected the sequence of task difficulties based solely of user ranking.
+The deterministic adaptive policy $\pi_{hard\_easy}$ selected the difficulty of the next question based on the correctness of one or two past responses, but did not explicitly take into account the probabilistic nature of task difficulty definition.
+This section introduces an attempt to incorporate the current frustration level $F_t$ experienced by the user $U_i$ during a session, as well as the probability of the user $U_i$ solving a task of a given relative difficulty, into the logic of the task list-building algorithm.
+
+First, the current level of frustration $F_t$ experienced by the user $U_i$ during any state of the session needs to be established.
+It is given that frustration $F$ needs to be marked on such scale so that 0 represents no frustration and 50 representing the highest level of frustration that the user $U_i$ can safely experience without terminating the session.
+In order to incorporate user frustration level into a probabilistic framework, such as Markov decision process, it makes sense to associate the values of $F$ with the corresponding probability of the user $U_i$ terminating the session at a given time $P(quit|F)$.
+Since $F=0$ is given to represent no frustration, it can be matched to 0\% chance of quitting:
+
+\begin{equation}
+    F = 0 \implies P(quit|F) = 0
+\end{equation}
+
+It is also given that $F=50$ represents the highest level of frustration a user can safely experience without giving up.
+However, it is not clear how to interpret which level can be considered safe in probabilistic terms, since there is always some chance that a user can terminate a session on every time step.
+For the purposes of this challenge, a level of user frustration $F=50$ was assumed to correspond to a 10\% chance of user terminating the session at a given time.
+
+\begin{equation}
+    F = 50 \implies P(quit|F) = 0.1
+\end{equation}
+
+By extending the scale linearly, a level of user frustration above $F=500$ is assumed to correspond to a 100\% chance of user terminating the session at a given time.
+
+\begin{equation}
+    F >= 500 \implies P(quit|F) = 1.0
+\end{equation}
+
+Overall, user frustration $F_t$ can be converted to the probability of the user terminating the session $P(quit)$ at a given time step $t$ as follows:
+
+\begin{equation} \label{eq:frustration}
+    P(quit|F) =
+    \begin{cases}
+        0.002 \cdot F & \text{if } F < 500 \\
+        1.0 & \text{if } F >= 500
+    \end{cases}
+\end{equation}
+
+For the purposes of this challenge, it is assumed that the current level of frustration is determined solely by the total number of incorrect answers given during the current session.
+The frustration threshold (corresponds to $P(quit|U_i)=1$) for each user $U_i$ can be empirically determined as the mean number of incorrect answers per session for all previous sessions logged by $U_i$.
+If the user $U_i$ has logged less than 10 sessions, the frustration threshold from all users in $U$ can be used instead.
+
+\begin{equation} \label{eq:frustration_threshold}
+    F(P(quit|F) = 1.0) = \frac{\sum \left( \text{Count of incorrect answers per session} \right) } {\text{Number of sessions}}
+\end{equation}
+
+\subsection{Formulating the task difficulty selection problem as a Markov decision process} \label{subsec:formulating_mdp}
+
+A Markov decision process is a discrete time stochastic control process.
+It provides a mathematical framework for modeling decision making in situations where outcomes are partly uncertain, and partly under the control of a decision maker.
+MDP framework provides a formalization of the key elements in reinforcement learning (RL), such as value functions and expected reward.
+
+An MDP expresses the problem of sequential decision making, where actions influence next states and the results.
+In our case, on each time step $t$ the task list-building agent iteratively selects the difficulty level of the task to be shown to the user $U_i$;
+selected difficulty influences the learning outcome (main reward $r_t$) and the probability of the user answering correctly, which in turn also influences the learning outcome as well as the frustration level experienced by user (probability of the user terminating the session at the time step $t+1$).
+
+An MDP is four-tuple ($S, A, P, R$) including four key elements:
+
+\begin{itemize}
+    \item $S$ is the state space, with a finite set of states
+
+    In the case of the task list-building agent, agents's state space is a sequence of tasks attempted by the user, with the next task difficulty being selected by the agent on each time step, until the user ultimately terminates the session.
+    After being presented with each new task $T_t$, the user may react in one of the three possible ways:
+
+    \begin{equation} \label{eq:mdp_state_space}
+        s_t \to
+        \begin{cases}
+            \text{quits at the time step } t \\
+            \text{tries } T_t \text{ and is right} \\
+            \text{tries } T_t \text{ and is wrong}
+        \end{cases}
+    \end{equation}
+
+    Each state of the agent is defined by:
+
+    \begin{itemize}
+        \item the number of tasks previously attempted by the user $U_i$ in the current session (current time step $t$)
+        \item cumulative reward $G_t = \sum \limits_{i=0}^t r_i$, where $r_i$ is the reward (learning outcome) collected at every previous time step
+        \item current frustration level $Fc_t$ experienced by $U_i$ (probability of the user terminating the session at the time step $t$)
+    \end{itemize}
+
+    \item $A$ is the action space, with a finite set of actions
+
+    on each time step $t$, the agent has three possible pools from which to draw a task for the user $U_i$: easy, average, or challenging, as defined by the relative task difficulty $D_{rel}(T_k, U_i)$
+
+    \begin{equation}
+        A = \left\{ \text{easy}, \text{average}, \text{challenging} \right\}
+    \end{equation}
+
+    \item $P$ is a transition function, which defines the probability of reaching a state $s'$ from $s$ after performing an action $a$.
+
+    \begin{table}[h!]
+        \centering
+        \begin{tabular}{ c || c | c | c  }
+            \toprule
+            \hline
+            Action & \multicolumn{3}{c}{Probability of outcome} \\
+            $a_t$ & quits & tries and is wrong & tries and is right \\
+            \hline
+            \midrule
+            Easy & $Fc_t$ & $ 0.25 \cdot (1 - Fc_t) $ & $0.75 \cdot (1 - Fc_t)$\\
+            \hline
+            Average & $Fc_t$ & $ 0.5 \cdot (1 - Fc_t) $ & $0.5 \cdot (1 - Fc_t)$\\
+            \hline
+            Challenging & $Fc_t$ & $ 0.75 \cdot (1 - Fc_t) $ & $0.25 \cdot (1 - Fc_t)$\\
+            \bottomrule
+        \end{tabular}
+        \caption{Transition matrix for the task list-building agent.
+        $Fc_t$ represents current frustration level experienced by the user $U_i$ (probability of the user terminating the session at the time step $t$).
+        Probabilities of the user answering a given task right or wrong are taken according to the relative task difficulty $D_{rel}(T_k, U_i)$ introduced in section~\ref{subsec:q3_drel}.}
+        \label{tab:mdp_transition_matrix}
+    \end{table}
+
+    The transition function is equal to the conditional probability of reaching a target state $s'$ after performing action $a$ from state $s$.
+
+    \begin{equation} \label{eq:mdp_transition_function)}
+    P(s', s, a) = p(s'|s, a)
+    \end{equation}
+
+    As was discussed above, there are three possible actions $a$ to be taken from each state $s$ (show easy, average or challenging question next) and three possible outcomes $s'$ that may follow (user quits, user tries and is wrong, user tries and is right).
+    Probability of the user quiting at a given time step $t$ is taken as $Fc_t$ (introduced in section~\ref{subsec:q4_frustration});
+    therefore probability of the user attempting the task can be found as $(1 - Fc_t)$ using the rule of compliment.
+    Probability of the user solving the given task can be determined using the relative task difficulty $D_{rel}(T_k, U_i)$ which was introduced in section~\ref{subsec:q3_drel} (assumed to be 75\% of right answers for relatively easy, 50\% for average, 25\% for challenging).
+
+    Transition matrix for the task list-building agent can be defined using the table~\ref{tab:mdp_transition_matrix}.
+
+    \item $R$ is the reward function, which determines the value received for transitioning from state $s$ to state $s'$ after performing the action $a$
+
+    Agent's rewards $r_t$ are determined by the difficulty of the questions selected and by user's ability to answer them correctly (learning outcome).
+    No negative reward is assumed by the user terminating the session;
+    in this case, simply no further gain can be accomplished.
+
+    \item Markov property
+
+    By definition, the transition function and the reward function posses the Markov property: their values are determined only by the current state, and not from the sequence of the previous states visited.
+    Markov property means that the process is memory-less and the future state depends only on the current one, and not on its history.
+    This way the current state holds all the information.
+    A system with such a property is called fully observable.
+
+    In the current formulation of the task list-building agent, probability of the user quiting is assumed to be determined solely by the current frustration level at time $t$, probability to answer the questions correctly is determined solely by relative question difficulty, and the reward is determined only by the difficulty of the question and whether the question was answered correctly.
+    Thus, the task list-building agent operates in a fully observable environment, where the current state holds all the information.
+
+    \item Policy $\pi$
+
+    The final objective of an MDP is to find a policy, $\pi$, that maximizes the cumulative reward, $ \sum \limits_{t=0}^\infty R_\pi (s_t, s_{t+1} ) $,
+    where $R_\pi$ is the reward obtained at each step by following the policy, $\pi$.
+    A solution of an MDP is found when a policy takes the best possible action in each state of the MDP.
+    This policy is known as the optimal policy.
+
+    \item Return
+
+    When running a policy in an MDP, the sequence of state and action ( $ S_0, A_0, S_1, A_1, \dots $ ) is called trajectory or rollout, and is denoted by $\tau$.
+    In each of agents's trajectories, a finite sequence of rewards will be collected as a result of agent's actions.
+    A function of these rewards is called return and in its most simplified version, it is defined as follows:
+
+
+    \begin{equation} \label{eq:mdp_return}
+        G(\tau) = r_0 + r_1 + \dots + r_n = \sum \limits_{t=0}^n r_t
+    \end{equation}
+
+    A trivial but useful decomposition of return is defining it recursively in terms of return at time step $t+1$:
+
+
+    \begin{equation} \label{eq:mdp_return_rec}
+        G_t = r_t + G_{t+1}
+    \end{equation}
+
+    The goal of RL is to find an optimal policy, $\pi$, that maximizes the expected return as
+
+    \begin{equation} \label{eq:mdp_rl_goal}
+        argmax_\pi E_\pi[G(\tau)]
+    \end{equation}
+
+    \item Value function
+
+    The return $G(\tau)$ provides a good insight into the trajectory's value, but doesn't give any indication of the quality of the single states visited, which can be used by the policy to choose the next best action.
+    The policy has to just choose the action that will result in the next state with the highest quality.
+    The value function does exactly this: it estimates the quality in terms of the expected return from a state following a policy.
+    Formally, the value function is defined as follows:
+
+    \begin{equation} \label{eq:mdp_value_function}
+        V_\pi(s) = E_\pi[G|s_0=s] = E_\pi[ \sum \limits_{t=0}^k r_t |s_0 =s]
+    \end{equation}
+
+    The action-value function, similar to the value function, is the expected return from a state but is also conditioned on the first action.
+    It is defined as follows:
+
+    \begin{equation} \label{eq:mdp_action_value_function}
+        Q_\pi(s, a) = E_\pi[G|s_0=s, a_0=a] = E_\pi [ \sum \limits_{t=0}^k r_t | s_0=s, a_0=a ]
+    \end{equation}
+
+    The value function and action-value function are also called the V-function and Q-function respectively, and are strictly correlated with each other since the value function can also be defined in terms of the action-value function:
+
+    \begin{equation} \label{eq:mdp_value_action_value}
+        V_\pi(s) = E_\pi[Q_\pi(s, a)]
+    \end{equation}
+
+    Knowing the optimal $Q^*$, the optimal value function is as follows:
+
+    \begin{equation} \label{eq:mdp_optimal_value}
+        V^*(s) = max_a Q^* (s, a)
+    \end{equation}
+
+    because the optimal action is $ a^* (s) = argmax_a Q^* (s, a) $.
+
+\end{itemize}
+
+\subsection{Modifying the task list-building algorithm to account for frustration} \label{subsec:q4_frustration_algorithm}
+
+$V$ and $Q$ functions defined above can be estimated by running trajectories that follow the policy, $\pi$, and then averaging the values obtained.
+This technique is effective and is used in many contexts, but can be very expensive considering that the return requires the rewards from the full trajectory.
+The Bellman equation defines the action-value function and the value function recursively, enabling their estimations from subsequent states.
+The Bellman equation does that by using the reward obtained in the present state and the value of its successor state.
+Using the recursive formulation of the return defined in equation~\ref{eq:mdp_return_rec}:
+
+\begin{equation} \label{eq:bellman_value}
+    V_\pi(s) = E_\pi [G_t | s_0 = s]
+    = E_\pi [r_t + G_{t+1} | s_0 = s]
+    = E_\pi [r_t + V(s_{t+1}) | s_t = s, a_t \sim \pi(s_t) ]
+\end{equation}
+
+Similarly, Bellman equation can be adapted to the action-value function:
+
+\begin{equation} \label{eq:bellman_action_value}
+    \begin{split}
+        Q_\pi(s, a) & = E_\pi [G_t | s_t = s, a_t = a] \\
+        & = E_\pi [r_t + G_{t+1}|s_t=s, a_t=a] \\
+        & = E_\pi [r_t + Q_\pi(s_{t+1}, a_{t+1})|s_t=s, a_t=a]
+    \end{split}
+\end{equation}
+
+Dynamic programming (DP) is a general algorithmic paradigm that breaks up a problem into smaller chunks of overlapping subproblems, and then finds the solution to the original problem by combining the solutions of the subproblems.
+DP can be used in reinforcement learning and is among one of the simplest approaches.
+It is suited to computing optimal policies by being provided with a perfect model of the environment.
+DP works with MDPs with a limited number of states and actions as it has to update the value of each state (or action-value), taking into consideration all the other possible states.
+Since DP algorithms use tables to store value functions, it is called tabular learning.
+
+DP uses bootstrapping, meaning that it improves the estimation value of a state by using the expected value of the following states.
+DP applies the Bellman equations introduced above in equations~\ref{eq:bellman_value} and~\ref{eq:bellman_action_value} to estimate $V^*$ and/or $Q^*$, which can be done as follows:
+
+\begin{equation} \label{eq:mdp_dp_optimal_value}
+    V^*(s) = max_a E [r_t + V^*(s_{t+1}) | s_t = s, a_t = a]
+\end{equation}
+
+\begin{equation} \label{eq:mdp_dp_optimal_action_value}
+    Q^*(s, a) = E [r_t + max_{a_{t+1}} Q^* (s_{t+1}, a_{t+1} | s_t = s, a_t = a)]
+\end{equation}
+
+Then, once the optimal value and action-value function are found, the optimal policy can be found by just taking the actions that maximize the expectation.
+
+An iterative procedure that iteratively improves the value function sequence $V_0, \dots, V_k$ is called policy evaluation.
+It uses the state value transition of the model, the expectation of the next state, and the immediate reward.
+Policy evaluation procedure creates a sequence of improving value function using the Bellman equation:
+
+\begin{equation}
+    V_{k+1} (s) = E_\pi [r_t + V_k(s_{t+1}) | s_t = s]
+    = \sum \limits_a \pi(s, a) \sum \limits_{s', r} p (s'|s, a)[r + V_k(s')]
+\end{equation}
+
+Once the value functions are improved, it can be used to find a better policy, which is called policy improvement;
+it can be done as follows:
+
+\begin{equation}
+    \pi' = argmax_a Q_\pi(s, a) = argmax_a \sum \limits_{s', r} p(s'|s, a)[r + V_\pi (s')]
+\end{equation}
+
+It creates a policy, $\pi'$, from the value function, $V_\pi$, of the original policy, $\pi$.
+The combination of policy evaluation and policy improvement gives rise to two algorithms to compute the optimal policy.
+One is called policy iteration and the other is called value iteration.
+Both use policy evaluation to monotonically improve the value function and policy improvement to estimate the new policy.
+The only difference is that policy iteration executes the two phases cyclically, while value iteration combines them in a single update.
+
+\subsection{Psudocode} \label{subsec:q4_pseudocode}
+
+The pseudocode for the policy iteration algorithm introduced above is as follows:
+
+$\quad$Initialize $V_\pi(s)$ and $pi(s)$ for every state $s$
+
+\vspace{5mm}
+
+$\quad$while $\pi$ is not stable:
+
+\vspace{5mm}
+
+$\quad\quad$\# policy evaluation
+
+$\quad\quad$while $V_\pi$ is not stable:
+
+$\quad\quad\quad$for each state $s$:
+
+$\quad\quad\quad\quad$ $ V_\pi (s) = \sum \limits_{s', r} p (s'|s, \pi(a))[r + V_\pi(s')] $
+
+\vspace{5mm}
+
+$\quad\quad$\# policy improvement
+
+$\quad\quad$for each state $s$:
+
+$\quad\quad\quad$ $\pi = argmax_a \sum \limits_{s', r} p(s'|s, a) [r + V_\pi(s')]$

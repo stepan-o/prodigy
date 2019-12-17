@@ -171,7 +171,7 @@ The categories for relative task difficulty $D_{rel}$ introduced in section~\ref
     $D_{cat}(T_k | D_{rel}(T_k, U_i \in UG_1 ) = Average) = Very~trivial$
 
     \item tasks that are categorized as either ``too hard'' or ``too easy'' according to $D_{rel}$ (as seen in table~\ref{tab:drel}) are not considered to be included during the current session.
-    \item following the policy $\pi$, the task list-building agent selects a sequence of pools to draw tasks from (e.g., $\left\{easy, easy, average, challenging, \dots \right\}$) in the current session.
+    \item following the policy $\pi$, the task list-building agent selects a sequence of pools to draw tasks from (e.g., easy, easy, challenging, \ldots, ) in the current session.
     The sequence can either be static (selected by a pre-defined logic), or it can be adaptive based on the correctness of responses given by the user $U_i$ in the current session.
     \item based on the defined sequence, the custom task list is built by randomly selecting tasks from corresponding pools without replacement, either in batch or after each user response.
     This way, the agent does not need to deal with the state space of the size of all available tasks for each task choice, and instead, each time it needs to select one from only three available options, each representing the difficulty level of the pool from which the next task should be drawn.
@@ -215,3 +215,96 @@ Policy $\pi_{adapt\_simple}$ presents an adaptive deterministic logic for diffic
 However, the nature of the environment in which the agent operates is stochastic, as the agent can never be absolutely sure if the user will be able to solve any given task $T_k$;
 both the absolute $D_{abs}(T_k)$ and the relative $D_{rel}(T_k, U_i)$ task difficulty estimates are probabilistic in their nature.
 The following section presents an approach to designing the task list-planning agent as a sequential stochastic decision making process through a Markov decision process framework which takes into account the probabilistic nature of the environment.
+
+\subsection{Pseudocode} \label{subsec:q3_pseudocode}
+
+\# identify user categories by ranking the users according to experience $Ex$
+
+\vspace{5mm}
+
+for user $U_i$ in users $U$:
+
+$\quad$
+\begin{equation}
+\begin{split}
+    Ex(U_i) = 0.1 \cdot very~trivial +
+    0.5 \cdot trivial +
+    1.0 \cdot moderate + \\
+    + 5.0 \cdot hard +
+    10.0 \cdot very~hard
+\end{split}
+\end{equation}
+
+\# identify natural breaks in the $Ex$ distribution using Fisher-Jenks optimization algorithm
+
+$ breaks = jenks.natural\_breaks(U[Ex]) $
+
+Assign user categories by binning users by experience within the natural breaks identified in $Ex$ distribution
+
+\vspace{5mm}
+
+\# logic for the simple adaptive agent following the policy $\pi_{adapt\_simple}$ (2 right: diff up, 1 wrong: diff down), uses relative difficulty
+
+\vspace{5mm}
+
+\# fill task pools with tasks of appropriate difficulty for the current user
+
+if user in $GU_{1}$:
+
+$\quad$ pool\_hard = random choice from $T$ where $D_{abs}(T_k) == Trivial$
+
+$\quad$...
+
+$\quad$ Other pools are filled in a similar fashion based on user category.
+
+\newpage
+
+\# iteratively select questions to be shown to the user based on their responses
+
+\# starting task difficulty
+
+current\_diff = `easy'
+
+\# initialize variables to store the results of previous responses
+
+num\_correct = 0
+
+\vspace{5mm}
+
+while keep\_playing:
+
+$\quad$ \# show the task of selected difficuly to the user and record their response
+
+$\quad$ response = task.show(difficulty=current\_diff)
+
+$\quad$ if response == correct:
+
+$\quad\quad$ num\_correct += 1
+
+$\quad$ else:
+
+$\quad\quad$ num\_correct = 0
+
+$\quad\quad$ if current\_diff == Average:
+
+$\quad\quad\quad$ current\_diff = Easy
+
+$\quad\quad$ if current\_diff == Hard:
+
+$\quad\quad\quad$ current\_diff = Average
+
+$\quad\quad\quad$\# easy difficulty is not adjusted following an incorrect answer
+
+$\quad$ if num\_correct = 2:
+
+$\quad\quad$ num\_correct = 0
+
+$\quad\quad$ if current\_diff == Average:
+
+$\quad\quad\quad$ current\_diff = Hard
+
+$\quad\quad$ if current\_diff == Easy:
+
+$\quad\quad\quad$ current\_diff = Average
+
+$\quad\quad\quad$\# hard difficulty is not adjusted following an incorrect answer

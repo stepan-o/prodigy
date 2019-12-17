@@ -48,7 +48,7 @@ $D(T_k)=0$ can be assumed to correspond to difficulty $D_{abs}(T_k)=1.00$ (all u
 This linear relationship between expert difficulty estimate $D_{expt}$ and the absolute probability of the correct answer $D_{abs}=p$ can be represented as follows:
 
 \begin{equation} \label{eq:dexpt_to_dabs_conversion}
-    D_{expt\_prob}(T_k | D_{expt}(T_k) = D_i) = 1 - 0.02 \cdot D_i
+    D_{expt\_prob}(T_k | D_{expt}(T_k) = D_i) = 1 - 0.02 \cdot D_{expt}
 \end{equation}
 
 where $D_i$ is an integer value from 0 to 50.
@@ -101,3 +101,37 @@ Since for the purposes of the implementation of a planning agent it is more conv
 So far, all the consideration has been given to rating absolute task difficulty, as defined by empirical user performance or expert judgement.
 However as was discussed in section~\ref{subsec:q1_abs_rel_difficulty}, due to the difference in ability levels shown by users in $U$ on the tasks in $T$, there are two definitions of task difficulty that need to be considered for the purposes of custom task list design: absolute task difficulty for a given task $T_k$ and relative task difficulty for a given pair of task $T_k$ and user $U_i$.
 In the following section, the absolute categorical task difficulty $D_{cat}(T_k)$ that was produced from the composite absolute task difficulty index $D_{comp}(T_k)$ will be used in combination with the user ranking by experience to produce relative task difficulty, $D_{rel}(T_k, U_i)$.
+
+\subsection{Pseudocode} \label{subsec:q2_pseudocode}
+
+\# combine expert estimates into a single absolute difficulty assessment
+
+for each task $T_k$ in $T$:
+
+\vspace{5mm}
+
+$\quad$ Initialize empty list of ratings
+
+$\quad$ for each task list in $L$ containing $T_k$:
+
+$\quad\quad$ append rating $D_i(T_k)$ to the list of ratings
+
+$\quad$ $D_{expt}(T_k) = \left \lfloor \frac{1} {m} \sum \limits_{i=1}^m D_i(T_k) \right \rfloor$, where $m$ in the number of task lists in $L$ containing task $T_k$
+
+\vspace{5mm}
+
+$\quad$ \# convert from $D_{expt}$ 0--50 scale to $D_{expt\_prob}$ 0--1 scale using linear relationship
+
+$\quad$ \# Note: preferred conversion method involves calibration of $D_{expt\_prob}$ estimates using empirical data
+
+\vspace{5mm}
+
+$\quad$ $ D_{expt\_prob}(T_k | D_{expt}(T_k) = D_i) = 1 - 0.02 \cdot D_{expt} $
+
+\vspace{5mm}
+
+$\quad$ \# determine the combined absolute task difficulty
+
+\vspace{5mm}
+
+$\quad$ $D_{comp}(T_k) = \frac{D_{abs}(T_k) + D_{expt\_prob}(T_k | D_{expt}(T_k) = D_i)} {2}$

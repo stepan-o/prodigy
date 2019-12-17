@@ -56,7 +56,6 @@ Since in our case each task $T_k$ is only attempted by a subset of users $U_{T_k
     E[P(Ans=Corr|T_k, U_i \in U_{T_k})] \approx E[P(Ans=Corr|T_k, U_i \in U)]
 \end{equation}
 
-
 Since it is said that users are given randomized subsets of tasks from $T$, given the large number of users and tasks, it can be assumed that for most tasks in $T$, each task $T_k$ is shown to a large random sample of users $U_{T_k}$ whose skill level and platform usage patterns are representative of the whole population of users in $U$;
 in this case, absolute difficulty $D_{abs}(T_k)$ of the task $T_k$ can be assumed to offer an unbiased estimate of absolute task difficulty with respect to all users in $U$.
 
@@ -65,3 +64,10 @@ To determine the uncertainty of this method, distribution of sample sizes $U_{T_
 The effect of sample sizes on difficulty estimates can be mitigating by using the uncertainty of each estimate as a weight coefficient when combining empirical absolute difficulty $D_{abs}(T_k)$ with expert estimate $D_{expt}(T_k)$ to determine the composite absolute task difficulty $D_{comp}(T_k)$, which will be discussed in section~\ref{subsec:q2_dcomp}.
 In addition, analysis of the distribution of $D_{abs}$ obtained empirically could be used to test the assumption and inform the design of a more meaningful scoring system that can be used to determine the absolute difficulty of a task.
 
+\subsection{Pseudocode} \label{subsec:q1_pseudocode}
+
+for each task $T_i$ in $T$:
+
+\vspace{5mm}
+
+$\quad$ $D_{abs}(T_k) = \frac{\text{Correct answers(}T_i\text{)}} {\text{Total answers(}T_i\text{)}}$
