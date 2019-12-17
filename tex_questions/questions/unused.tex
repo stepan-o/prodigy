@@ -40,3 +40,18 @@
     \label{fig:ada_learn_rate}
 \end{figure}
 
+It is considered common practice to use discount factors $G(\tau) = \sum \limits_{t=0}^\infty \lambda^t r_t $ for both infinite- and finite-horizon (**episodic**) tasks to show preference for actions that are closer in time with respect to those that will be encountered in the distant future.
+However, in the case of the current formulation of the question-feeding bot, all the rewards are considered to be equally important and bot's tasks are assumed to have a finite and short horizon;
+thus, simple return formulation with no discount factors has been used.
+
+Based on the conditions outlined above, the following reward structure can be used for the task list-building agent:
+At any time step $t$, after the player answers a question, the reward received by the bot will be driven by the relative difficulty of the question and whether it was answered right or not.
+
+|Question $Q_t$ | Answer $Ans_t$ | Learning $L_t$ | Frustration $F_t$ | Reward $R_t$ |
+|---------------|----------------|----------------|-------------------|--------------|
+|     Easy      |      Corr      |      + 0.5     |       + 0.5       |    + 1.0     |
+|     Easy      |     Incorr     |        0.0     |       - 0.5       |    - 0.5     |
+|    Average    |      Corr      |      + 1.5     |       + 0.5       |    + 2.0     |
+|    Average    |     Incorr     |      + 0.5     |       - 0.5       |      0.0     |
+|  Challenging  |      Corr      |      + 2.5     |       + 0.5       |    + 3.0     |
+|  Challenging  |     Incorr     |      + 1.0     |       - 0.5       |    + 0.5     |
